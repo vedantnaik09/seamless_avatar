@@ -68,16 +68,19 @@ def run_pipeline(
 
     work_dir = Path(f"/tmp/{job_id}")
     work_dir.mkdir(parents=True, exist_ok=True)
+    logger.info("[%s] Work dir: %s", job_id, work_dir)
 
     # ── Save initial avatar image ───────────────────────────────────────────
     start_img = work_dir / "frame_000.jpg"
     start_img.write_bytes(img_bytes)
+    logger.info("[%s] Saved start image -> %s", job_id, start_img)
 
     # ── Load base workflow ──────────────────────────────────────────────────
     with open(WORKFLOW_PATH) as f:
         base_workflow = json.load(f)
 
     output_fps = _workflow_fps(base_workflow)
+    logger.info("[%s] Workflow FPS: %.2f", job_id, output_fps)
 
     # ── Compute segment count ───────────────────────────────────────────────
     effective_clip = (CLIP_FRAMES - TRIM_FRAMES) / output_fps
@@ -101,6 +104,7 @@ def run_pipeline(
         jobs[job_id]["progress"] = i
 
         # ── Upload start image ──────────────────────────────────────────────
+        logger.info("[%s] Uploading start image", job_id)
         comfy_filename = upload_image(start_img, filename=f"start_{job_id}_{i}.jpg")
         if not comfy_filename:
             jobs[job_id]["status"] = "error"
@@ -108,6 +112,7 @@ def run_pipeline(
             return
 
         # ── Patch workflow ──────────────────────────────────────────────────
+        logger.info("[%s] Patching workflow", job_id)
         workflow = patch_workflow(
             base_workflow=base_workflow,
             start_image_filename=comfy_filename,
@@ -122,12 +127,14 @@ def run_pipeline(
         )
 
         # ── Submit & poll ───────────────────────────────────────────────────
+        logger.info("[%s] Submitting workflow", job_id)
         prompt_id = submit_workflow(workflow)
         if not prompt_id:
             jobs[job_id]["status"] = "error"
             jobs[job_id]["error"] = f"Workflow submit failed at segment {i}"
             return
 
+        logger.info("[%s] Polling ComfyUI for prompt_id=%s", job_id, prompt_id)
         success = poll_until_done(prompt_id)
         if not success:
             jobs[job_id]["status"] = "error"
@@ -135,6 +142,7 @@ def run_pipeline(
             return
 
         # ── Retrieve output video ───────────────────────────────────────────
+        logger.info("[%s] Downloading output video", job_id)
         raw_path = get_output_video_path(prompt_id, work_dir, segment_index=i)
         if not raw_path:
             jobs[job_id]["status"] = "error"
@@ -147,6 +155,7 @@ def run_pipeline(
         # ── Trim segment start (skip for first segment) ─────────────────────
         if i > 0 and TRIM_FRAMES > 0:
             trimmed = work_dir / f"segment_trimmed_{i:03d}.mp4"
+            logger.info("[%s] Trimming %s frames -> %s", job_id, TRIM_FRAMES, trimmed)
             trim_segment_start(raw_path, str(trimmed), trim_frames=TRIM_FRAMES, fps=output_fps)
             trimmed_segment_paths.append(str(trimmed))
         else:
@@ -154,11 +163,13 @@ def run_pipeline(
 
         # ── Extract last frame → next start image ──────────────────────────
         next_frame = work_dir / f"frame_{i+1:03d}.jpg"
+        logger.info("[%s] Extracting last frame -> %s", job_id, next_frame)
         extract_last_frame(raw_path, str(next_frame))
         start_img = next_frame
 
     # ── Stitch all segments ─────────────────────────────────────────────────
     final_output = str(work_dir / "final.mp4")
+    logger.info("[%s] Stitching %s segments -> %s", job_id, len(trimmed_segment_paths), final_output)
     stitch_segments(
         segment_paths=trimmed_segment_paths,
         output_path=final_output,

@@ -23,7 +23,7 @@ class Config:
     # ── ComfyUI remote endpoint ──────────────────────────────────────────────
     # Point this at your Pinggy tunnel URL.  Updated live via PATCH /config.
     comfy_url: str = field(
-        default_factory=lambda: os.getenv("COMFY_URL", "http://xmhkq-34-53-126-20.run.pinggy-free.link/")
+        default_factory=lambda: os.getenv("COMFY_URL", "http://grolc-34-53-126-20.run.pinggy-free.link/")
     )
 
     # ── Generation defaults ──────────────────────────────────────────────────

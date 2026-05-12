@@ -8,12 +8,19 @@ GET  /download/{job_id} → download final mp4
 from fastapi import FastAPI, BackgroundTasks, UploadFile, Form, HTTPException
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+import logging
 import uuid
 
 from orchestrator import run_pipeline
 from models import jobs
 
 app = FastAPI(title="Avatar Video Pipeline", version="1.0.0")
+
+# Ensure app logs and pipeline logs show up in the terminal
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
 
 app.add_middleware(
     CORSMiddleware,
