@@ -58,15 +58,15 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ### 4. Generate a video
 
 ```bash
-curl -X POST http://localhost:8000/generate \
-  -F "image=@avatar.jpg" \
-  -F "prompt=A well-lit professional man speaks to the camera..." \
-  -F "duration_seconds=30" \
-  -F "width=640" \
-  -F "height=480" \
-  -F "cfg_scale=5" \
-  -F "steps=20"
-# → {"job_id": "abc123..."}
+curl --location 'http://localhost:8000/generate' \
+--form 'image=@"/G:/Downloads/gettyimages-1295079780-640x640.jpg"' \
+--form 'prompt="A well-lit professional man stands centered against a clean modern background, speaking directly to the camera with natural facial expressions and subtle hand gestures. He wears a smart casual shirt and maintains steady eye contact while talking confidently. The background is softly blurred and uncluttered, with bright neutral lighting and minimal distractions. Smooth cinematic camera framing, realistic skin tones, natural lip sync, high detail, clear focus, studio-quality appearance, calm atmosphere."' \
+--form 'negative_prompt="low quality, worst quality, blurry, out of focus, overexposed, underexposed, low contrast, noisy, distorted face, deformed eyes, bad anatomy, extra fingers, missing fingers, fused fingers, poorly drawn hands, poorly drawn face, duplicate person, multiple people, crowded background, messy background, background movement, subtitles, watermark, text, logo, artifacts, jpeg artifacts, cartoon, painting, anime, unrealistic skin, unnatural lip sync, frozen frame, static pose, weird mouth movement, asymmetrical face, flickering, shaky camera, mutated limbs, extra limbs, bad proportions, tilted face, motion blur, dark lighting, harsh shadows, grainy video, warped body, inconsistent frames, background characters, walking backwards, camera jitter"' \
+--form 'duration_seconds="10"' \
+--form 'width="640"' \
+--form 'height="480"' \
+--form 'cfg_scale="5"' \
+--form 'steps="20"'
 ```
 
 ```bash
