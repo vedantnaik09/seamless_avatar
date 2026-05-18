@@ -98,7 +98,6 @@ async function readResponseError(response: Response) {
 
 const App = () => {
   const apiBase = DEFAULT_API_BASE
-  const [backendConnection, setBackendConnection] = useState<ConnectionState | null>(null)
   const [comfyUrl, setComfyUrl] = useState('')
   const [prompt, setPrompt] = useState(DEFAULT_PROMPT)
   const [negativePrompt, setNegativePrompt] = useState(DEFAULT_NEGATIVE_PROMPT)
@@ -141,7 +140,6 @@ const App = () => {
         if (cancelled) return
 
         setComfyUrl(data.comfy_url)
-        setBackendConnection(data.connection)
       } catch (error) {
         if (!cancelled) {
           setErrorMessage(error instanceof Error ? error.message : 'Unable to load backend config')
@@ -178,7 +176,6 @@ const App = () => {
 
         setJobs((currentJobs) => [data, ...currentJobs.filter((job) => job.job_id !== data.job_id)])
         setErrorMessage('')
-        setBackendConnection((current) => current)
 
         if (data.status === 'done' || data.status === 'error') {
           setStatusMessage(data.status === 'done' ? 'Video ready for download.' : 'Generation failed.')
@@ -269,7 +266,6 @@ const App = () => {
   const progressPercent = activeJob && activeJob.total_segments > 0 ? Math.min(100, Math.round((activeJob.progress / activeJob.total_segments) * 100)) : 0
   const currentSegment = activeJob ? Math.min(activeJob.progress + (activeJob.status === 'done' ? 0 : 1), Math.max(1, activeJob.total_segments || 1)) : 0
   const estimatedSegments = estimateSegments(durationSeconds)
-  const connectionIsHealthy = backendConnection?.reachable ?? false
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#f4efe7] text-slate-950">
@@ -281,10 +277,10 @@ const App = () => {
         <header className="flex flex-col gap-4 rounded-4xl border border-white/70 bg-white/75 px-5 py-5 shadow-[0_20px_80px_rgba(15,23,42,0.08)] backdrop-blur-xl sm:px-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-2xl space-y-3">
             <div className="inline-flex items-center gap-2 rounded-full border border-slate-200/70 bg-slate-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-600">
-              Live avatar generator
+              Live video generator
             </div>
             <div className="space-y-2">
-              <h1 className="text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">Create a clean talking-head video from one image.</h1>
+              <h1 className="text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">Create a polished video from one reference image.</h1>
               <p className="max-w-3xl text-sm leading-6 text-slate-600 sm:text-base">
                 Sync your ComfyUI tunnel, tune the generation parameters, and watch each segment, log line, and final MP4 arrive in real time.
               </p>
@@ -324,7 +320,7 @@ const App = () => {
 
               <div className="grid gap-4 md:grid-cols-[1fr_1.1fr]">
                 <label className="flex h-full flex-col gap-3 rounded-3xl border border-dashed border-slate-300 bg-slate-50/70 p-4 transition hover:border-slate-400 hover:bg-white">
-                  <span className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Avatar image</span>
+                  <span className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Reference image</span>
                   <input
                     type="file"
                     accept="image/jpeg,image/png,image/webp"
@@ -337,7 +333,7 @@ const App = () => {
                     </div>
                   ) : (
                     <div className="flex min-h-36 items-center justify-center rounded-[1.25rem] border border-slate-200 bg-white text-sm text-slate-400">
-                      Choose a face-forward image to begin.
+                      Choose a source image to begin.
                     </div>
                   )}
                 </label>
