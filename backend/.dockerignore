@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+*.mp4
+*.png
+*.jpg
+*.jpeg
+*.webp
+.env
+.venv/
+venv/
+tmp/
+outputs/

@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: avatar-pipeline-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: starter
+    autoDeploy: true
+    healthCheckPath: /health
+    envVars:
+      - key: COMFY_URL
+        sync: false
