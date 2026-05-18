@@ -1,10 +1,10 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
-import GeneratorPage from './pages/Generator'
+import App from './App'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <GeneratorPage />
+    <App />
   </StrictMode>,
 )
