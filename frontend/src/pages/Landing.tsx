@@ -4,6 +4,11 @@ import { Link } from 'react-router-dom';
 const Landing = () => {
   // Demo State: 0=Idle, 1=Generating Segments, 2=Segments Ready, 3=Stitching, 4=Final Ready
   const [demoStep, setDemoStep] = useState(0);
+  const [imageUploaded, setImageUploaded] = useState(false);
+
+  const handleUpload = () => {
+    setImageUploaded(true);
+  };
 
   const handleGenerate = () => {
     setDemoStep(1);
@@ -15,7 +20,10 @@ const Landing = () => {
     setTimeout(() => setDemoStep(4), 500); // Mock 2-second stitching time
   };
 
-  const handleReset = () => setDemoStep(0);
+  const handleReset = () => {
+    setDemoStep(0);
+    setImageUploaded(false);
+  };
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#f4efe7] text-slate-950 pb-20">
@@ -76,17 +84,17 @@ const Landing = () => {
 
           {/* Right: Interactive Demo */}
           <section id="demo" className="relative z-10">
-            <div className="rounded-4xl border border-[#2f2f2f]/80 bg-[#151515]/92 p-2 shadow-[0_30px_100px_rgba(12,12,12,0.28)] backdrop-blur-2xl">
-              <div className="rounded-3xl border border-[#40362d]/80 bg-[#1e1414]/88 p-5 shadow-inner sm:p-6">
+            <div className="rounded-4xl border border-[#333333]/80 bg-[#161616]/92 p-2 shadow-[0_30px_100px_rgba(12,12,12,0.26)] backdrop-blur-2xl">
+              <div className="rounded-3xl border border-[#2f2f2f]/80 bg-[#1d1d1d]/88 p-5 shadow-inner sm:p-6">
                 
                 {/* Mock Browser/App Header */}
-                <div className="mb-6 flex items-center gap-2 border-b border-[#3c332b] pb-4">
+                <div className="mb-6 flex items-center gap-2 border-b border-[#303030] pb-4">
                   <div className="flex gap-1.5">
                     <div className="h-3 w-3 rounded-full bg-rose-400/80"></div>
                     <div className="h-3 w-3 rounded-full bg-amber-400/80"></div>
                     <div className="h-3 w-3 rounded-full bg-emerald-400/80"></div>
                   </div>
-                  <span className="ml-3 text-xs font-semibold tracking-wider uppercase text-[#b9aa98]">Frameflow Demo</span>
+                  <span className="ml-3 text-xs font-semibold tracking-wider uppercase text-[#a8a8a8]">Frameflow Demo</span>
                 </div>
 
                 {/* Prompt Input */}
@@ -96,17 +104,17 @@ const Landing = () => {
                       type="text" 
                       readOnly 
                       value="A well-lit professional man stands..." 
-                      className="w-full rounded-xl border border-[#4a3f35] bg-[#12100d] px-4 py-3.5 text-sm text-[#efe7dd] outline-none ring-1 ring-[#4a3f35]/60 shadow-sm placeholder:text-[#9f9181]"
+                      className="w-full rounded-xl border border-[#343434] bg-[#121212] px-4 py-3.5 text-sm text-[#efefef] outline-none ring-1 ring-[#343434]/60 shadow-sm placeholder:text-[#9b9b9b]"
                     />
                     <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
-                      <span className="text-xs font-medium text-[#b8aa9b]">Prompt</span>
+                      <span className="text-xs font-medium text-[#a8a8a8]">Prompt</span>
                     </div>
                   </div>
                   
-                  {demoStep === 0 && (
+                  {demoStep === 0 && imageUploaded && (
                     <button 
                       onClick={handleGenerate}
-                      className="whitespace-nowrap rounded-xl bg-[#f2eadf] px-6 py-3.5 text-sm font-semibold text-[#17120e] shadow-md transition-all hover:bg-white active:scale-95"
+                      className="whitespace-nowrap rounded-xl bg-[#f1efe9] px-6 py-3.5 text-sm font-semibold text-[#161616] shadow-md transition-all hover:bg-white active:scale-95"
                     >
                       Generate Segments
                     </button>
@@ -114,16 +122,47 @@ const Landing = () => {
                 </div>
 
                 {/* Interactive State Area */}
-                <div className="relative flex min-h-55 flex-col items-center justify-center overflow-hidden rounded-2xl border border-[#40362d]/80 bg-[#120f0c] p-4">
+                <div className="relative flex min-h-55 flex-col items-center justify-center overflow-hidden rounded-2xl border border-[#2f2f2f]/80 bg-[#111111] p-4">
                   
-                  {demoStep === 0 && (
-                    <p className="text-sm font-medium text-[#b8aa9b]">Click generate to start the pipeline</p>
+                  {demoStep === 0 && !imageUploaded && (
+                    <div className="w-full max-w-md space-y-4 text-center">
+                      <div className="overflow-hidden rounded-2xl border border-[#2f2f2f]/80 bg-[#1c1c1c] shadow-md ring-1 ring-white/10">
+                        <div className="flex aspect-video items-center justify-center bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.06),transparent_45%),linear-gradient(180deg,rgba(255,255,255,0.03),rgba(0,0,0,0.14))]">
+                          <div className="text-center">
+                            <p className="text-sm font-semibold text-[#f0f0f0]">Upload source image</p>
+                            <p className="mt-1 text-xs text-[#a8a8a8]">Place your image in the public folder and preview it here.</p>
+                          </div>
+                        </div>
+                      </div>
+                      <button
+                        onClick={handleUpload}
+                        className="inline-flex items-center justify-center rounded-full bg-[#f1efe9] px-5 py-2.5 text-sm font-semibold text-[#161616] shadow-md transition-all hover:bg-white active:scale-95"
+                      >
+                        Upload image
+                      </button>
+                    </div>
+                  )}
+
+                  {demoStep === 0 && imageUploaded && (
+                    <div className="w-full max-w-md space-y-4">
+                      <div className="overflow-hidden rounded-2xl border border-[#2f2f2f]/80 bg-[#1c1c1c] shadow-md ring-1 ring-white/10">
+                        <img
+                          src="/demo-upload-image.jpg"
+                          alt="Uploaded source preview"
+                          className="aspect-video w-full object-cover"
+                        />
+                      </div>
+                      <div className="flex items-center justify-between gap-3 rounded-full border border-[#2f2f2f]/80 bg-[#181818] px-4 py-2 text-xs font-medium text-[#ebebeb]">
+                        <span>Source image uploaded</span>
+                        <span className="text-[#a8a8a8]">Ready to generate</span>
+                      </div>
+                    </div>
                   )}
 
                   {(demoStep === 1 || demoStep === 3) && (
                     <div className="flex flex-col items-center gap-3">
-                      <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#3f352d] border-t-[#f2eadf]"></div>
-                      <p className="animate-pulse text-sm font-medium text-[#eadfce]">
+                      <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#363636] border-t-[#f1efe9]"></div>
+                      <p className="animate-pulse text-sm font-medium text-[#ececec]">
                         {demoStep === 1 ? 'Generating video segments...' : 'Stitching final MP4...'}
                       </p>
                     </div>
@@ -132,11 +171,11 @@ const Landing = () => {
                   {demoStep === 2 && (
                     <div className="w-full space-y-4 animate-in fade-in zoom-in duration-500">
                       <div className="grid grid-cols-2 gap-4">
-                        <div className="relative aspect-video overflow-hidden rounded-lg bg-[#1c1713] shadow-md ring-1 ring-white/10">
+                        <div className="relative aspect-video overflow-hidden rounded-lg bg-[#1c1c1c] shadow-md ring-1 ring-white/10">
                           <video src="/demo-segment-1.mp4" autoPlay loop muted playsInline className="h-full w-full object-cover opacity-90 hover:opacity-100 transition-opacity" />
                           <div className="absolute bottom-2 left-2 rounded bg-black/60 px-2 py-1 text-[10px] text-white backdrop-blur-sm">Segment 1</div>
                         </div>
-                        <div className="relative aspect-video overflow-hidden rounded-lg bg-[#1c1713] shadow-md ring-1 ring-white/10">
+                        <div className="relative aspect-video overflow-hidden rounded-lg bg-[#1c1c1c] shadow-md ring-1 ring-white/10">
                           <video src="/demo-segment-2.mp4" autoPlay loop muted playsInline className="h-full w-full object-cover opacity-90 hover:opacity-100 transition-opacity" />
                           <div className="absolute bottom-2 left-2 rounded bg-black/60 px-2 py-1 text-[10px] text-white backdrop-blur-sm">Segment 2</div>
                         </div>
@@ -144,7 +183,7 @@ const Landing = () => {
                       <div className="flex justify-center pt-2">
                         <button 
                           onClick={handleStitch}
-                          className="flex items-center gap-2 rounded-full bg-[#f2eadf] px-6 py-2.5 text-sm font-semibold text-[#17120e] shadow-md transition-all hover:bg-white active:scale-95"
+                          className="flex items-center gap-2 rounded-full bg-[#f1efe9] px-6 py-2.5 text-sm font-semibold text-[#161616] shadow-md transition-all hover:bg-white active:scale-95"
                         >
                           Merge to Final MP4
                         </button>
@@ -154,7 +193,7 @@ const Landing = () => {
 
                   {demoStep === 4 && (
                     <div className="w-full flex flex-col items-center gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                      <div className="relative aspect-video w-full max-w-sm overflow-hidden rounded-xl bg-[#1c1713] shadow-xl ring-4 ring-white/10">
+                      <div className="relative aspect-video w-full max-w-sm overflow-hidden rounded-xl bg-[#1c1c1c] shadow-xl ring-4 ring-white/10">
                         <video src="/demo-final.mp4" autoPlay loop muted playsInline className="h-full w-full object-cover" />
                         <div className="absolute top-3 right-3 rounded-full bg-emerald-500/90 px-3 py-1 text-[11px] font-bold text-white backdrop-blur-md shadow-sm">
                           FINAL RENDER
@@ -162,7 +201,7 @@ const Landing = () => {
                       </div>
                       <button 
                         onClick={handleReset}
-                        className="text-xs font-semibold text-[#b8aa9b] underline underline-offset-4 transition-colors hover:text-[#f2eadf]"
+                        className="text-xs font-semibold text-[#a8a8a8] underline underline-offset-4 transition-colors hover:text-[#f1efe9]"
                       >
                         Reset Demo
                       </button>
@@ -176,12 +215,13 @@ const Landing = () => {
         </div>
 
         {/* Feature Steps List */}
-        <section className="grid gap-4 mt-8 sm:grid-cols-4 z-10 relative">
+        <section className="grid gap-4 mt-8 sm:grid-cols-2 lg:grid-cols-5 z-10 relative">
           {[
             { step: '01', title: 'Connect', text: 'Link your ComfyUI tunnel URL.' },
-            { step: '02', title: 'Input', text: 'Upload reference image & prompt.' },
-            { step: '03', title: 'Stream', text: 'Watch segments appear live.' },
-            { step: '04', title: 'Export', text: 'Download the stitched MP4.' },
+            { step: '02', title: 'Upload image', text: 'Choose the source image for the generation run.' },
+            { step: '03', title: 'Input prompt', text: 'Describe the motion, framing, and style you want.' },
+            { step: '04', title: 'Stream', text: 'Watch segments appear live.' },
+            { step: '05', title: 'Export', text: 'Download the stitched MP4.' },
           ].map((item) => (
             <div key={item.step} className="rounded-3xl border border-white/60 bg-white/40 p-5 text-sm shadow-[0_8px_30px_rgba(15,23,42,0.04)] backdrop-blur-xl transition-all hover:bg-white/60">
               <p className="mb-3 text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Step {item.step}</p>
