@@ -1,23 +1,60 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
+const pipelineSteps = [
+  {
+    step: '01',
+    title: 'Connect your endpoint',
+    text: 'Paste your ComfyUI tunnel URL and instantly validate connectivity before you spend credits or time.',
+    tag: 'Setup',
+  },
+  {
+    step: '02',
+    title: 'Upload a reference frame',
+    text: 'Bring in the key image that anchors identity, framing, and visual consistency for the generated shots.',
+    tag: 'Input',
+  },
+  {
+    step: '03',
+    title: 'Direct the motion',
+    text: 'Describe pacing, camera movement, and mood so each segment follows the same creative intent.',
+    tag: 'Prompt',
+  },
+  {
+    step: '04',
+    title: 'Review live segments',
+    text: 'Track generation progress, inspect segment outputs in real time, and iterate only where needed.',
+    tag: 'Preview',
+  },
+  {
+    step: '05',
+    title: 'Render the final cut',
+    text: 'Merge approved segments into one polished MP4 ready for social, product demos, or internal review.',
+    tag: 'Export',
+  },
+];
+
+const statCards = [
+  { label: 'Average setup', value: '< 2 min' },
+  { label: 'Pipeline visibility', value: 'Live logs' },
+  { label: 'Final output', value: 'MP4' },
+];
+
 const Landing = () => {
-  // Demo State: 0=Idle, 1=Generating Segments, 2=Segments Ready, 3=Stitching, 4=Final Ready
+  // Demo State
   const [demoStep, setDemoStep] = useState(0);
   const [imageUploaded, setImageUploaded] = useState(false);
 
-  const handleUpload = () => {
-    setImageUploaded(true);
-  };
+  const handleUpload = () => setImageUploaded(true);
 
   const handleGenerate = () => {
     setDemoStep(1);
-    setTimeout(() => setDemoStep(2), 500); // Mock 2-second generation time
+    setTimeout(() => setDemoStep(2), 500); 
   };
 
   const handleStitch = () => {
     setDemoStep(3);
-    setTimeout(() => setDemoStep(4), 500); // Mock 2-second stitching time
+    setTimeout(() => setDemoStep(4), 500); 
   };
 
   const handleReset = () => {
@@ -25,16 +62,79 @@ const Landing = () => {
     setImageUploaded(false);
   };
 
+  useEffect(() => {
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const revealElements = Array.from(document.querySelectorAll<HTMLElement>('[data-reveal]'));
+
+    if (prefersReducedMotion) {
+      revealElements.forEach((element) => element.classList.add('reveal-in'));
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) {
+            return;
+          }
+
+          const element = entry.target as HTMLElement;
+          const delay = Number(element.dataset.delay ?? 0);
+          element.style.transitionDelay = `${delay}ms`;
+
+          requestAnimationFrame(() => {
+            element.classList.add('reveal-in');
+          });
+
+          observer.unobserve(element);
+        });
+      },
+      {
+        threshold: 0.08,
+        rootMargin: '0px 0px -2% 0px',
+      },
+    );
+
+    revealElements.forEach((element) => observer.observe(element));
+
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#f4efe7] text-slate-950 pb-20">
+      <style>{`
+        .reveal {
+          opacity: 0;
+          transform: translateY(22px) scale(0.992);
+          filter: blur(4px);
+          transition-property: opacity, transform;
+          transition-duration: 900ms;
+          transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+          will-change: opacity, transform;
+        }
+
+        .reveal-in {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+          filter: blur(0);
+        }
+      `}</style>
+
       {/* Background gradients */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.78),transparent_35%),radial-gradient(circle_at_80%_0%,rgba(125,83,255,0.12),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(15,23,42,0.08),transparent_30%)]" />
-      <div className="absolute -left-32 top-24 h-72 w-72 rounded-full bg-amber-200/40 blur-3xl" />
-      <div className="absolute -right-24 top-1/3 h-80 w-80 rounded-full bg-sky-200/30 blur-3xl" />
+      
+      {/* Parallax Blobs */}
+      <div className="pointer-events-none absolute -left-32 top-24 h-72 w-72 rounded-full bg-amber-200/40 blur-3xl" />
+      <div className="pointer-events-none absolute -right-24 top-1/3 h-80 w-80 rounded-full bg-sky-200/30 blur-3xl" />
 
       <div className="relative mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-        {/* Header */}
-        <header className="flex items-center justify-between rounded-4xl border border-white/70 bg-white/75 px-5 py-4 shadow-[0_20px_80px_rgba(15,23,42,0.08)] backdrop-blur-xl sm:px-6 z-10">
+        
+        {/* Header (Fades in on load) */}
+        <header
+          data-reveal
+          data-delay="0"
+          className="reveal flex items-center justify-between rounded-4xl border border-white/70 bg-white/75 px-5 py-4 shadow-[0_20px_80px_rgba(15,23,42,0.08)] backdrop-blur-xl sm:px-6 z-10"
+        >
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate-900">Frameflow</p>
             <p className="mt-1 text-sm text-slate-600">Minimal end-to-end video generation workspace</p>
@@ -51,7 +151,7 @@ const Landing = () => {
         <div className="grid flex-1 items-center gap-10 py-10 lg:grid-cols-[1fr_1.2fr] lg:py-16">
           
           {/* Left: Copy & CTA */}
-          <section className="space-y-7 z-10">
+          <section data-reveal data-delay="80" className="reveal space-y-7 z-10">
             <div className="inline-flex items-center gap-2 rounded-full border border-slate-200/70 bg-white/75 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-600 backdrop-blur-xl shadow-sm">
               <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
               Live video generation
@@ -83,7 +183,7 @@ const Landing = () => {
           </section>
 
           {/* Right: Interactive Demo */}
-          <section id="demo" className="relative z-10">
+          <section data-reveal data-delay="140" id="demo" className="reveal relative z-10">
             <div className="rounded-4xl border border-[#333333]/80 bg-[#161616]/92 p-2 shadow-[0_30px_100px_rgba(12,12,12,0.26)] backdrop-blur-2xl">
               <div className="rounded-3xl border border-[#2f2f2f]/80 bg-[#1d1d1d]/88 p-5 shadow-inner sm:p-6">
                 
@@ -130,7 +230,6 @@ const Landing = () => {
                         <div className="flex aspect-video items-center justify-center bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.06),transparent_45%),linear-gradient(180deg,rgba(255,255,255,0.03),rgba(0,0,0,0.14))]">
                           <div className="text-center">
                             <p className="text-sm font-semibold text-[#f0f0f0]">Upload source image</p>
-                            <p className="mt-1 text-xs text-[#a8a8a8]">Place your image in the public folder and preview it here.</p>
                           </div>
                         </div>
                       </div>
@@ -214,21 +313,65 @@ const Landing = () => {
           </section>
         </div>
 
-        {/* Feature Steps List */}
-        <section className="grid gap-4 mt-8 sm:grid-cols-2 lg:grid-cols-5 z-10 relative">
-          {[
-            { step: '01', title: 'Connect', text: 'Link your ComfyUI tunnel URL.' },
-            { step: '02', title: 'Upload image', text: 'Choose the source image for the generation run.' },
-            { step: '03', title: 'Input prompt', text: 'Describe the motion, framing, and style you want.' },
-            { step: '04', title: 'Stream', text: 'Watch segments appear live.' },
-            { step: '05', title: 'Export', text: 'Download the stitched MP4.' },
-          ].map((item) => (
-            <div key={item.step} className="rounded-3xl border border-white/60 bg-white/40 p-5 text-sm shadow-[0_8px_30px_rgba(15,23,42,0.04)] backdrop-blur-xl transition-all hover:bg-white/60">
-              <p className="mb-3 text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Step {item.step}</p>
-              <p className="font-semibold text-slate-950 mb-1">{item.title}</p>
-              <p className="text-slate-600 leading-relaxed">{item.text}</p>
+        {/* Workflow Story Section */}
+        <section
+          data-reveal
+          data-delay="120"
+          className="relative mt-8 overflow-hidden rounded-4xl border border-white/65 bg-white/55 p-5 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur-2xl sm:p-7 lg:p-10"
+        >
+          <div className="pointer-events-none absolute -top-24 -right-20 h-56 w-56 rounded-full bg-amber-200/40 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-28 -left-16 h-56 w-56 rounded-full bg-sky-200/45 blur-3xl" />
+
+          <div className="relative grid gap-10 lg:grid-cols-[0.9fr_1.3fr]">
+            <div data-reveal data-delay="180" className="reveal lg:sticky lg:top-10 lg:self-start">
+              <p className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-600">
+                Pipeline walkthrough
+              </p>
+              <h2 className="mt-4 text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
+                A premium flow from prompt to final render.
+              </h2>
+              <p className="mt-4 max-w-md text-sm leading-relaxed text-slate-600 sm:text-base">
+                This section is intentionally vertical: each step lands with breathing room, subtle motion, and clear hierarchy so the journey feels guided instead of crowded.
+              </p>
+
+              <div className="mt-6 grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+                {statCards.map((item) => (
+                  <div
+                    key={item.label}
+                    className="rounded-2xl border border-white/70 bg-white/80 px-4 py-3 shadow-[0_8px_24px_rgba(15,23,42,0.06)]"
+                  >
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">{item.label}</p>
+                    <p className="mt-1 text-lg font-semibold text-slate-950">{item.value}</p>
+                  </div>
+                ))}
+              </div>
             </div>
-          ))}
+
+            <div className="relative flex flex-col gap-4">
+              <div className="pointer-events-none absolute left-5.5 top-4 bottom-4 w-px bg-linear-to-b from-slate-300/80 via-slate-300/50 to-transparent" />
+
+              {pipelineSteps.map((item, index) => (
+                <article
+                  data-reveal
+                  data-delay={220 + index * 110}
+                  key={item.step}
+                  className="reveal relative ml-0 rounded-2xl border border-white/70 bg-white/85 p-5 pl-14 shadow-[0_10px_32px_rgba(15,23,42,0.07)] transition-all hover:-translate-y-0.5 hover:shadow-[0_14px_36px_rgba(15,23,42,0.1)]"
+                >
+                  <div className="absolute left-4 top-5 flex h-7 w-7 items-center justify-center rounded-full border border-slate-300 bg-slate-950 text-[10px] font-bold tracking-wider text-white">
+                    {item.step}
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <h3 className="text-base font-semibold text-slate-950 sm:text-lg">{item.title}</h3>
+                    <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                      {item.tag}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-sm leading-relaxed text-slate-600 sm:text-[15px]">{item.text}</p>
+                </article>
+              ))}
+            </div>
+          </div>
         </section>
       </div>
     </main>

@@ -306,7 +306,18 @@ const App = () => {
                     <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Connection</p>
                     <h2 className="mt-1 text-lg font-semibold text-slate-950">ComfyUI tunnel</h2>
                   </div>
-
+                  <p className="text-xs leading-5 text-green-900">
+                  Need your own ComfyUI host? Use this Colab setup and get a free link:
+                  {' '}
+                  <a
+                    href="https://colab.research.google.com/drive/1dH04ch7W8A6WMs-FMQeYAPgo3AYxw_it?usp=sharing"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-semibold text-slate-700 underline underline-offset-2 transition hover:text-slate-900"
+                  >
+                    Open ComfyUI Colab
+                  </a>
+                </p>
                 <input
                   value={comfyUrl}
                   onChange={(event) => setComfyUrl(event.target.value)}
