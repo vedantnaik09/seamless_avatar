@@ -78,6 +78,7 @@ def update_config(payload: ConfigPayload):
 @app.post("/generate")
 async def generate(
     image: UploadFile = File(...),
+    comfy_url: str = Form(default=""),
     prompt: str = Form(...),
     negative_prompt: str = Form(
         default=(
@@ -110,12 +111,15 @@ async def generate(
     job_id = str(uuid.uuid4())
     img_bytes = await image.read()
 
-    jobs[job_id] = create_job_record()
+    comfy_url_value = comfy_url.strip() or None
+
+    jobs[job_id] = create_job_record(comfy_url=comfy_url_value)
 
     background_tasks.add_task(
         run_pipeline,
         job_id=job_id,
         img_bytes=img_bytes,
+        comfy_url=comfy_url_value,
         prompt=prompt,
         negative_prompt=negative_prompt,
         duration_seconds=duration_seconds,

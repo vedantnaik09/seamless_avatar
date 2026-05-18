@@ -24,13 +24,13 @@ logger = logging.getLogger(__name__)
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-def _base() -> str:
-    url = cfg.comfy_url.rstrip("/")
+def _base(comfy_url: Optional[str] = None) -> str:
+    url = (comfy_url or cfg.comfy_url).rstrip("/")
     if "REPLACE_ME" in url:
         raise RuntimeError(
             "COMFY_URL is not configured. "
-            "Set the COMFY_URL environment variable or call PATCH /config "
-            "with your Pinggy URL before generating."
+            "Set the COMFY_URL environment variable, call PATCH /config, "
+            "or provide comfy_url on /generate before generating."
         )
     return url
 
@@ -47,26 +47,30 @@ def _session() -> requests.Session:
 
 # ── Connection check ──────────────────────────────────────────────────────────
 
-def check_connection() -> dict:
+def check_connection(comfy_url: Optional[str] = None) -> dict:
     """Ping ComfyUI. Returns {"reachable": bool, ...}."""
     try:
-        resp = _session().get(f"{_base()}/system_stats", timeout=8)
+        resp = _session().get(f"{_base(comfy_url)}/system_stats", timeout=8)
         resp.raise_for_status()
-        return {"reachable": True, "comfy_url": _base(), "system": resp.json()}
+        return {"reachable": True, "comfy_url": _base(comfy_url), "system": resp.json()}
     except RuntimeError as e:
         return {"reachable": False, "error": str(e)}
     except Exception as e:
-        return {"reachable": False, "comfy_url": cfg.comfy_url, "error": str(e)}
+        return {"reachable": False, "comfy_url": (comfy_url or cfg.comfy_url), "error": str(e)}
 
 
 # ── Image upload ─────────────────────────────────────────────────────────────
 
-def upload_image(image_path: Path, filename: str = "start_frame.jpg") -> Optional[str]:
+def upload_image(
+    image_path: Path,
+    filename: str = "start_frame.jpg",
+    comfy_url: Optional[str] = None,
+) -> Optional[str]:
     """
     Upload a local image to ComfyUI /upload/image over the Pinggy tunnel.
     Returns the ComfyUI-assigned filename, or None on failure.
     """
-    url = f"{_base()}/upload/image"
+    url = f"{_base(comfy_url)}/upload/image"
     try:
         with open(image_path, "rb") as f:
             resp = _session().post(
@@ -81,7 +85,7 @@ def upload_image(image_path: Path, filename: str = "start_frame.jpg") -> Optiona
         logger.info(f"Uploaded {image_path.name} -> ComfyUI: {assigned}")
         return assigned
     except requests.exceptions.ConnectionError as e:
-        logger.error(f"Cannot reach ComfyUI at {_base()} — is the Pinggy tunnel active? {e}")
+        logger.error(f"Cannot reach ComfyUI at {_base(comfy_url)} — is the Pinggy tunnel active? {e}")
         return None
     except Exception as e:
         logger.error(f"upload_image failed: {e}")
@@ -90,12 +94,12 @@ def upload_image(image_path: Path, filename: str = "start_frame.jpg") -> Optiona
 
 # ── Workflow submission ───────────────────────────────────────────────────────
 
-def submit_workflow(workflow: dict) -> Optional[str]:
+def submit_workflow(workflow: dict, comfy_url: Optional[str] = None) -> Optional[str]:
     """
     POST the patched workflow to ComfyUI /prompt.
     Returns the prompt_id string, or None on failure.
     """
-    url = f"{_base()}/prompt"
+    url = f"{_base(comfy_url)}/prompt"
     try:
         api_prompt = _build_api_prompt(workflow)
         resp = _session().post(
@@ -118,7 +122,7 @@ def submit_workflow(workflow: dict) -> Optional[str]:
         logger.info(f"Submitted workflow -> prompt_id: {prompt_id}")
         return prompt_id
     except requests.exceptions.ConnectionError as e:
-        logger.error(f"Cannot reach ComfyUI at {_base()} — tunnel down? {e}")
+        logger.error(f"Cannot reach ComfyUI at {_base(comfy_url)} — tunnel down? {e}")
         return None
     except Exception as e:
         logger.error(f"submit_workflow failed: {e}")
@@ -127,12 +131,12 @@ def submit_workflow(workflow: dict) -> Optional[str]:
 
 # ── Polling ───────────────────────────────────────────────────────────────────
 
-def poll_until_done(prompt_id: str) -> bool:
+def poll_until_done(prompt_id: str, comfy_url: Optional[str] = None) -> bool:
     """
     Poll /history/{prompt_id} until done, error, or timeout.
     Returns True on success.
     """
-    url = f"{_base()}/history/{prompt_id}"
+    url = f"{_base(comfy_url)}/history/{prompt_id}"
     start = time.time()
     last_status = None
 
@@ -183,6 +187,7 @@ def get_output_video_path(
     prompt_id: str,
     work_dir: Path,
     segment_index: int,
+    comfy_url: Optional[str] = None,
 ) -> Optional[str]:
     """
     Download the generated video from ComfyUI /view to a local file.
@@ -191,7 +196,7 @@ def get_output_video_path(
     # Fetch history to find filename
     try:
         resp = _session().get(
-            f"{_base()}/history/{prompt_id}",
+            f"{_base(comfy_url)}/history/{prompt_id}",
             timeout=cfg.poll_req_timeout,
         )
         resp.raise_for_status()
@@ -219,7 +224,7 @@ def get_output_video_path(
                 local_path = work_dir / f"segment_{segment_index:03d}.mp4"
                 try:
                     with _session().get(
-                        f"{_base()}/view",
+                        f"{_base(comfy_url)}/view",
                         params={"filename": filename, "subfolder": subfolder, "type": ftype},
                         stream=True,
                         timeout=cfg.download_timeout,

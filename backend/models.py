@@ -9,7 +9,7 @@ from typing import Any, Dict, List
 jobs: Dict[str, Dict[str, Any]] = {}
 
 
-def create_job_record() -> Dict[str, Any]:
+def create_job_record(comfy_url: str | None = None) -> Dict[str, Any]:
 	return {
 		"status": "queued",
 		"progress": 0,
@@ -18,6 +18,7 @@ def create_job_record() -> Dict[str, Any]:
 		"output": None,
 		"error": None,
 		"logs": [],
+		"comfy_url": comfy_url,
 	}
 
 

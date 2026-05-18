@@ -62,6 +62,7 @@ def _workflow_fps(workflow: dict) -> float:
 def run_pipeline(
     job_id: str,
     img_bytes: bytes,
+    comfy_url: str | None,
     prompt: str,
     negative_prompt: str,
     duration_seconds: int,
@@ -117,7 +118,11 @@ def run_pipeline(
 
         # ── Upload start image ──────────────────────────────────────────────
         logger.info("[%s] Uploading start image", job_id)
-        comfy_filename = upload_image(start_img, filename=f"start_{job_id}_{i}.jpg")
+        comfy_filename = upload_image(
+            start_img,
+            filename=f"start_{job_id}_{i}.jpg",
+            comfy_url=comfy_url,
+        )
         if not comfy_filename:
             _fail_job(job_id, f"Image upload failed at segment {i + 1}")
             return
@@ -141,14 +146,14 @@ def run_pipeline(
 
         # ── Submit & poll ───────────────────────────────────────────────────
         logger.info("[%s] Submitting workflow", job_id)
-        prompt_id = submit_workflow(workflow)
+        prompt_id = submit_workflow(workflow, comfy_url=comfy_url)
         if not prompt_id:
             _fail_job(job_id, f"Workflow submit failed at segment {i + 1}")
             return
 
         logger.info("[%s] Polling ComfyUI for prompt_id=%s", job_id, prompt_id)
         append_job_log(job_id, f"Segment {i + 1}: polling ComfyUI")
-        success = poll_until_done(prompt_id)
+        success = poll_until_done(prompt_id, comfy_url=comfy_url)
         if not success:
             _fail_job(job_id, f"Segment {i + 1} timed out or failed")
             return
@@ -156,7 +161,7 @@ def run_pipeline(
         # ── Retrieve output video ───────────────────────────────────────────
         logger.info("[%s] Downloading output video", job_id)
         append_job_log(job_id, f"Segment {i + 1}: downloading output video")
-        raw_path = get_output_video_path(prompt_id, work_dir, segment_index=i)
+        raw_path = get_output_video_path(prompt_id, work_dir, segment_index=i, comfy_url=comfy_url)
         if not raw_path:
             _fail_job(job_id, f"Could not locate output video for segment {i + 1}")
             return

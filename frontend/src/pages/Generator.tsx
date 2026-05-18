@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 
 type JobStatus = 'queued' | 'running' | 'done' | 'error' | string
 
@@ -203,29 +204,6 @@ const App = () => {
     }
   }, [apiBase, selectedJobId])
 
-  const syncComfyUrl = async () => {
-    const trimmed = comfyUrl.trim()
-    if (!trimmed) {
-      setErrorMessage('Enter a ComfyUI URL before generating.')
-      return null
-    }
-
-    const response = await fetch(joinUrl(apiBase, '/config'), {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ comfy_url: trimmed }),
-    })
-
-    if (!response.ok) {
-      throw new Error(await readResponseError(response))
-    }
-
-    const data = (await response.json()) as ConfigResponse
-    setComfyUrl(data.comfy_url)
-    setBackendConnection(data.connection)
-    return data
-  }
-
   const submitJob = async () => {
     if (!imageFile) {
       throw new Error('Choose an image first.')
@@ -235,10 +213,9 @@ const App = () => {
       throw new Error('Prompt is required.')
     }
 
-    await syncComfyUrl()
-
     const formData = new FormData()
     formData.append('image', imageFile)
+    formData.append('comfy_url', comfyUrl.trim())
     formData.append('prompt', prompt.trim())
     formData.append('negative_prompt', negativePrompt.trim())
     formData.append('duration_seconds', String(durationSeconds))
@@ -315,10 +292,12 @@ const App = () => {
           </div>
 
           <div className="flex flex-wrap items-center gap-3 text-sm">
-            <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 font-medium ${connectionIsHealthy ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200' : 'bg-amber-50 text-amber-800 ring-1 ring-amber-200'}`}>
-              <span className={`h-2 w-2 rounded-full ${connectionIsHealthy ? 'bg-emerald-500' : 'bg-amber-500'}`} />
-              {connectionIsHealthy ? 'ComfyUI reachable' : 'ComfyUI not confirmed'}
-            </span>
+            <Link
+              to="/"
+              className="rounded-full border border-slate-200 bg-white px-3 py-1.5 font-medium text-slate-700 transition hover:bg-slate-50"
+            >
+              Back home
+            </Link>
             <span className="rounded-full bg-slate-900 px-3 py-1.5 font-medium text-white">API {apiBase.replace(/^https?:\/\//, '')}</span>
           </div>
         </header>
@@ -327,30 +306,10 @@ const App = () => {
           <section className="rounded-4xl border border-white/70 bg-white/75 p-5 shadow-[0_20px_80px_rgba(15,23,42,0.08)] backdrop-blur-xl sm:p-6">
             <form className="space-y-6" onSubmit={handleSubmit}>
               <div className="space-y-3">
-                <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Connection</p>
                     <h2 className="mt-1 text-lg font-semibold text-slate-950">ComfyUI tunnel</h2>
                   </div>
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      setErrorMessage('')
-                      setStatusMessage('Saving ComfyUI URL...')
-                      try {
-                        const data = await syncComfyUrl()
-                        if (data) {
-                          setStatusMessage(data.connection.reachable ? 'ComfyUI URL synced.' : 'URL saved, but ComfyUI did not respond yet.')
-                        }
-                      } catch (error) {
-                        setErrorMessage(error instanceof Error ? error.message : 'Unable to save ComfyUI URL')
-                      }
-                    }}
-                    className="rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
-                  >
-                    Save URL
-                  </button>
-                </div>
 
                 <input
                   value={comfyUrl}
@@ -359,7 +318,7 @@ const App = () => {
                   className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-4 focus:ring-slate-200"
                 />
                 <p className="text-xs leading-5 text-slate-500">
-                  The backend uses this URL to reach ComfyUI. Keep it updated if your tunnel changes.
+                  The backend receives this URL with each generation request, so you can change tunnels per job.
                 </p>
               </div>
 
@@ -417,7 +376,7 @@ const App = () => {
                       <input
                         type="number"
                         min={64}
-                        step={64}
+                        step={1}
                         value={width}
                         onChange={(event) => setWidth(Number(event.target.value))}
                         className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-slate-400 focus:ring-4 focus:ring-slate-200"
@@ -428,7 +387,7 @@ const App = () => {
                       <input
                         type="number"
                         min={64}
-                        step={64}
+                        step={1}
                         value={height}
                         onChange={(event) => setHeight(Number(event.target.value))}
                         className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-slate-400 focus:ring-4 focus:ring-slate-200"
@@ -565,7 +524,7 @@ const App = () => {
                     <div key={`${log.ts}-${log.message}`} className="mb-1 flex gap-3 last:mb-0">
                       <span className="shrink-0 text-slate-400">{formatTime(log.ts)}</span>
                       <span className="shrink-0 uppercase tracking-[0.18em] text-slate-500">{log.level}</span>
-                      <span className="min-w-0 flex-1 wrap-break-word text-slate-100">{log.message}</span>
+                      <span className="min-w-0 flex-1 wrap-break-word text-slate-800">{log.message}</span>
                     </div>
                   ))
                 ) : (
