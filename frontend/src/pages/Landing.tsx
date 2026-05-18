@@ -76,17 +76,17 @@ const Landing = () => {
 
           {/* Right: Interactive Demo */}
           <section id="demo" className="relative z-10">
-            <div className="rounded-[2rem] border border-white/80 bg-white/50 p-2 shadow-[0_30px_100px_rgba(15,23,42,0.12)] backdrop-blur-2xl">
-              <div className="rounded-[1.5rem] bg-white/80 p-5 sm:p-6 shadow-inner border border-white/50">
+            <div className="rounded-4xl border border-[#2f2f2f]/80 bg-[#151515]/92 p-2 shadow-[0_30px_100px_rgba(12,12,12,0.28)] backdrop-blur-2xl">
+              <div className="rounded-3xl border border-[#40362d]/80 bg-[#1e1414]/88 p-5 shadow-inner sm:p-6">
                 
                 {/* Mock Browser/App Header */}
-                <div className="mb-6 flex items-center gap-2 border-b border-slate-200 pb-4">
+                <div className="mb-6 flex items-center gap-2 border-b border-[#3c332b] pb-4">
                   <div className="flex gap-1.5">
                     <div className="h-3 w-3 rounded-full bg-rose-400/80"></div>
                     <div className="h-3 w-3 rounded-full bg-amber-400/80"></div>
                     <div className="h-3 w-3 rounded-full bg-emerald-400/80"></div>
                   </div>
-                  <span className="ml-3 text-xs font-semibold text-slate-400 tracking-wider uppercase">Frameflow Demo</span>
+                  <span className="ml-3 text-xs font-semibold tracking-wider uppercase text-[#b9aa98]">Frameflow Demo</span>
                 </div>
 
                 {/* Prompt Input */}
@@ -95,18 +95,18 @@ const Landing = () => {
                     <input 
                       type="text" 
                       readOnly 
-                      value="A highly detailed, cinematic slow-motion shot..." 
-                      className="w-full rounded-xl bg-slate-50/50 px-4 py-3.5 text-sm text-slate-600 outline-none ring-1 ring-slate-200/60 shadow-sm"
+                      value="A well-lit professional man stands..." 
+                      className="w-full rounded-xl border border-[#4a3f35] bg-[#12100d] px-4 py-3.5 text-sm text-[#efe7dd] outline-none ring-1 ring-[#4a3f35]/60 shadow-sm placeholder:text-[#9f9181]"
                     />
                     <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
-                      <span className="text-xs font-medium text-slate-400">Prompt</span>
+                      <span className="text-xs font-medium text-[#b8aa9b]">Prompt</span>
                     </div>
                   </div>
                   
                   {demoStep === 0 && (
                     <button 
                       onClick={handleGenerate}
-                      className="whitespace-nowrap rounded-xl bg-slate-950 px-6 py-3.5 text-sm font-semibold text-white shadow-md transition-all hover:bg-slate-800 active:scale-95"
+                      className="whitespace-nowrap rounded-xl bg-[#f2eadf] px-6 py-3.5 text-sm font-semibold text-[#17120e] shadow-md transition-all hover:bg-white active:scale-95"
                     >
                       Generate Segments
                     </button>
@@ -114,16 +114,16 @@ const Landing = () => {
                 </div>
 
                 {/* Interactive State Area */}
-                <div className="min-h-[220px] rounded-2xl bg-slate-100/50 p-4 border border-slate-200/50 flex flex-col items-center justify-center relative overflow-hidden">
+                <div className="relative flex min-h-55 flex-col items-center justify-center overflow-hidden rounded-2xl border border-[#40362d]/80 bg-[#120f0c] p-4">
                   
                   {demoStep === 0 && (
-                    <p className="text-sm text-slate-400 font-medium">Click generate to start the pipeline</p>
+                    <p className="text-sm font-medium text-[#b8aa9b]">Click generate to start the pipeline</p>
                   )}
 
                   {(demoStep === 1 || demoStep === 3) && (
                     <div className="flex flex-col items-center gap-3">
-                      <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-slate-950"></div>
-                      <p className="text-sm font-medium text-slate-500 animate-pulse">
+                      <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#3f352d] border-t-[#f2eadf]"></div>
+                      <p className="animate-pulse text-sm font-medium text-[#eadfce]">
                         {demoStep === 1 ? 'Generating video segments...' : 'Stitching final MP4...'}
                       </p>
                     </div>
@@ -132,11 +132,11 @@ const Landing = () => {
                   {demoStep === 2 && (
                     <div className="w-full space-y-4 animate-in fade-in zoom-in duration-500">
                       <div className="grid grid-cols-2 gap-4">
-                        <div className="relative aspect-video rounded-lg overflow-hidden bg-slate-900 shadow-md">
+                        <div className="relative aspect-video overflow-hidden rounded-lg bg-[#1c1713] shadow-md ring-1 ring-white/10">
                           <video src="/demo-segment-1.mp4" autoPlay loop muted playsInline className="h-full w-full object-cover opacity-90 hover:opacity-100 transition-opacity" />
                           <div className="absolute bottom-2 left-2 rounded bg-black/60 px-2 py-1 text-[10px] text-white backdrop-blur-sm">Segment 1</div>
                         </div>
-                        <div className="relative aspect-video rounded-lg overflow-hidden bg-slate-900 shadow-md">
+                        <div className="relative aspect-video overflow-hidden rounded-lg bg-[#1c1713] shadow-md ring-1 ring-white/10">
                           <video src="/demo-segment-2.mp4" autoPlay loop muted playsInline className="h-full w-full object-cover opacity-90 hover:opacity-100 transition-opacity" />
                           <div className="absolute bottom-2 left-2 rounded bg-black/60 px-2 py-1 text-[10px] text-white backdrop-blur-sm">Segment 2</div>
                         </div>
@@ -144,7 +144,7 @@ const Landing = () => {
                       <div className="flex justify-center pt-2">
                         <button 
                           onClick={handleStitch}
-                          className="rounded-full bg-slate-900 px-6 py-2.5 text-sm font-semibold text-white shadow-md transition-all hover:bg-slate-800 active:scale-95 flex items-center gap-2"
+                          className="flex items-center gap-2 rounded-full bg-[#f2eadf] px-6 py-2.5 text-sm font-semibold text-[#17120e] shadow-md transition-all hover:bg-white active:scale-95"
                         >
                           Merge to Final MP4
                         </button>
@@ -154,7 +154,7 @@ const Landing = () => {
 
                   {demoStep === 4 && (
                     <div className="w-full flex flex-col items-center gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                      <div className="relative w-full max-w-sm aspect-video rounded-xl overflow-hidden bg-slate-900 shadow-xl ring-4 ring-white/50">
+                      <div className="relative aspect-video w-full max-w-sm overflow-hidden rounded-xl bg-[#1c1713] shadow-xl ring-4 ring-white/10">
                         <video src="/demo-final.mp4" autoPlay loop muted playsInline className="h-full w-full object-cover" />
                         <div className="absolute top-3 right-3 rounded-full bg-emerald-500/90 px-3 py-1 text-[11px] font-bold text-white backdrop-blur-md shadow-sm">
                           FINAL RENDER
@@ -162,7 +162,7 @@ const Landing = () => {
                       </div>
                       <button 
                         onClick={handleReset}
-                        className="text-xs font-semibold text-slate-500 hover:text-slate-900 underline underline-offset-4 transition-colors"
+                        className="text-xs font-semibold text-[#b8aa9b] underline underline-offset-4 transition-colors hover:text-[#f2eadf]"
                       >
                         Reset Demo
                       </button>
