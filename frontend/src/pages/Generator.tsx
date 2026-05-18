@@ -50,6 +50,8 @@ const TRIM_FRAMES = 2
 const OUTPUT_FPS = 16
 const EFFECTIVE_SEGMENT_SECONDS = (CLIP_FRAMES - TRIM_FRAMES) / OUTPUT_FPS
 
+type NumericFieldValue = string
+
 function joinUrl(baseUrl: string, path?: string | null) {
   if (!path) {
     return ''
@@ -82,6 +84,20 @@ function estimateSegments(durationSeconds: number) {
   return Math.max(1, Math.ceil(durationSeconds / EFFECTIVE_SEGMENT_SECONDS))
 }
 
+function parseNumericField(value: NumericFieldValue, fieldName: string) {
+  const trimmed = value.trim()
+  if (!trimmed) {
+    throw new Error(`${fieldName} is required.`)
+  }
+
+  const parsed = Number(trimmed)
+  if (!Number.isFinite(parsed)) {
+    throw new Error(`${fieldName} must be a valid number.`)
+  }
+
+  return parsed
+}
+
 async function readResponseError(response: Response) {
   const text = await response.text()
   if (!text) {
@@ -101,11 +117,11 @@ const App = () => {
   const [comfyUrl, setComfyUrl] = useState('')
   const [prompt, setPrompt] = useState(DEFAULT_PROMPT)
   const [negativePrompt, setNegativePrompt] = useState(DEFAULT_NEGATIVE_PROMPT)
-  const [durationSeconds, setDurationSeconds] = useState(10)
-  const [width, setWidth] = useState(640)
-  const [height, setHeight] = useState(480)
-  const [cfgScale, setCfgScale] = useState(5)
-  const [steps, setSteps] = useState(20)
+  const [durationSeconds, setDurationSeconds] = useState<NumericFieldValue>('10')
+  const [width, setWidth] = useState<NumericFieldValue>('640')
+  const [height, setHeight] = useState<NumericFieldValue>('480')
+  const [cfgScale, setCfgScale] = useState<NumericFieldValue>('5')
+  const [steps, setSteps] = useState<NumericFieldValue>('20')
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState('')
   const [jobs, setJobs] = useState<JobRecord[]>([])
@@ -210,16 +226,22 @@ const App = () => {
       throw new Error('Prompt is required.')
     }
 
+    const parsedDurationSeconds = parseNumericField(durationSeconds, 'Duration')
+    const parsedWidth = parseNumericField(width, 'Width')
+    const parsedHeight = parseNumericField(height, 'Height')
+    const parsedCfgScale = parseNumericField(cfgScale, 'CFG scale')
+    const parsedSteps = parseNumericField(steps, 'Steps')
+
     const formData = new FormData()
     formData.append('image', imageFile)
     formData.append('comfy_url', comfyUrl.trim())
     formData.append('prompt', prompt.trim())
     formData.append('negative_prompt', negativePrompt.trim())
-    formData.append('duration_seconds', String(durationSeconds))
-    formData.append('width', String(width))
-    formData.append('height', String(height))
-    formData.append('cfg_scale', String(cfgScale))
-    formData.append('steps', String(steps))
+    formData.append('duration_seconds', String(parsedDurationSeconds))
+    formData.append('width', String(parsedWidth))
+    formData.append('height', String(parsedHeight))
+    formData.append('cfg_scale', String(parsedCfgScale))
+    formData.append('steps', String(parsedSteps))
 
     const response = await fetch(joinUrl(apiBase, '/generate'), {
       method: 'POST',
@@ -265,7 +287,7 @@ const App = () => {
 
   const progressPercent = activeJob && activeJob.total_segments > 0 ? Math.min(100, Math.round((activeJob.progress / activeJob.total_segments) * 100)) : 0
   const currentSegment = activeJob ? Math.min(activeJob.progress + (activeJob.status === 'done' ? 0 : 1), Math.max(1, activeJob.total_segments || 1)) : 0
-  const estimatedSegments = estimateSegments(durationSeconds)
+  const estimatedSegments = estimateSegments(Number(durationSeconds) || 1)
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#f4efe7] text-slate-950">
@@ -364,7 +386,7 @@ const App = () => {
                         type="number"
                         min={1}
                         value={durationSeconds}
-                        onChange={(event) => setDurationSeconds(Number(event.target.value))}
+                        onChange={(event) => setDurationSeconds(event.target.value)}
                         className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-slate-400 focus:ring-4 focus:ring-slate-200"
                       />
                     </label>
@@ -374,7 +396,7 @@ const App = () => {
                         type="number"
                         min={1}
                         value={steps}
-                        onChange={(event) => setSteps(Number(event.target.value))}
+                        onChange={(event) => setSteps(event.target.value)}
                         className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-slate-400 focus:ring-4 focus:ring-slate-200"
                       />
                     </label>
@@ -385,7 +407,7 @@ const App = () => {
                         min={64}
                         step={1}
                         value={width}
-                        onChange={(event) => setWidth(Number(event.target.value))}
+                        onChange={(event) => setWidth(event.target.value)}
                         className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-slate-400 focus:ring-4 focus:ring-slate-200"
                       />
                     </label>
@@ -396,7 +418,7 @@ const App = () => {
                         min={64}
                         step={1}
                         value={height}
-                        onChange={(event) => setHeight(Number(event.target.value))}
+                        onChange={(event) => setHeight(event.target.value)}
                         className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-slate-400 focus:ring-4 focus:ring-slate-200"
                       />
                     </label>
@@ -409,7 +431,7 @@ const App = () => {
                       min={1}
                       step={0.1}
                       value={cfgScale}
-                      onChange={(event) => setCfgScale(Number(event.target.value))}
+                      onChange={(event) => setCfgScale(event.target.value)}
                       className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-slate-400 focus:ring-4 focus:ring-slate-200"
                     />
                   </label>
