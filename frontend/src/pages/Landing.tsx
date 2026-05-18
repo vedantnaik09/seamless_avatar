@@ -44,8 +44,12 @@ const Landing = () => {
   // Demo State
   const [demoStep, setDemoStep] = useState(0);
   const [imageUploaded, setImageUploaded] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
 
-  const handleUpload = () => setImageUploaded(true);
+  const handleUpload = () => {
+    setImageUploaded(true);
+    setImageLoaded(false);
+  };
 
   const handleGenerate = () => {
     setDemoStep(1);
@@ -60,6 +64,7 @@ const Landing = () => {
   const handleReset = () => {
     setDemoStep(0);
     setImageUploaded(false);
+    setImageLoaded(false);
   };
 
   useEffect(() => {
@@ -245,11 +250,21 @@ const Landing = () => {
                   {demoStep === 0 && imageUploaded && (
                     <div className="w-full max-w-md space-y-4">
                       <div className="overflow-hidden rounded-2xl border border-[#2f2f2f]/80 bg-[#1c1c1c] shadow-md ring-1 ring-white/10">
-                        <img
-                          src="/demo-upload-image.jpg"
-                          alt="Uploaded source preview"
-                          className="aspect-video w-full object-cover"
-                        />
+                        <div className="relative">
+                          {!imageLoaded && (
+                            <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/40">
+                              <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#363636] border-t-[#f1efe9]"></div>
+                            </div>
+                          )}
+
+                          <img
+                            src="/demo-upload-image.jpg"
+                            alt="Uploaded source preview"
+                            onLoad={() => setImageLoaded(true)}
+                            onError={() => setImageLoaded(true)}
+                            className={`aspect-video w-full object-cover ${!imageLoaded ? 'opacity-0' : 'opacity-100'} transition-opacity duration-300`}
+                          />
+                        </div>
                       </div>
                       <div className="flex items-center justify-between gap-3 rounded-full border border-[#2f2f2f]/80 bg-[#181818] px-4 py-2 text-xs font-medium text-[#ebebeb]">
                         <span>Source image uploaded</span>
