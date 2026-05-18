@@ -26,10 +26,17 @@ from comfy_client import (
     get_output_video_path,
 )
 from video_utils import extract_last_frame, stitch_segments, trim_segment_start
-from models import jobs
+from models import jobs, append_job_log
 from config import cfg
 
 logger = logging.getLogger(__name__)
+
+
+def _fail_job(job_id: str, message: str) -> None:
+    jobs[job_id]["status"] = "error"
+    jobs[job_id]["error"] = message
+    append_job_log(job_id, message, level="error")
+    logger.error("[%s] %s", job_id, message)
 
 # ── Timing constants ────────────────────────────────────────────────────────
 CLIP_FRAMES = cfg.clip_frames          # frames per segment — matches Wan22ImageToVideoLatent
@@ -65,15 +72,18 @@ def run_pipeline(
 ) -> None:
     """Entry point called by FastAPI BackgroundTasks."""
     jobs[job_id]["status"] = "running"
+    append_job_log(job_id, "Generation started")
 
     work_dir = Path(f"/tmp/{job_id}")
     work_dir.mkdir(parents=True, exist_ok=True)
     logger.info("[%s] Work dir: %s", job_id, work_dir)
+    append_job_log(job_id, f"Working directory created at {work_dir}")
 
     # ── Save initial avatar image ───────────────────────────────────────────
     start_img = work_dir / "frame_000.jpg"
     start_img.write_bytes(img_bytes)
     logger.info("[%s] Saved start image -> %s", job_id, start_img)
+    append_job_log(job_id, "Uploaded image received and saved")
 
     # ── Load base workflow ──────────────────────────────────────────────────
     with open(WORKFLOW_PATH) as f:
@@ -86,6 +96,7 @@ def run_pipeline(
     effective_clip = (CLIP_FRAMES - TRIM_FRAMES) / output_fps
     n_segments = max(1, math.ceil(duration_seconds / effective_clip))
     jobs[job_id]["total_segments"] = n_segments
+    append_job_log(job_id, f"Planning {n_segments} segment(s) for {duration_seconds}s output")
 
     logger.info(
         "[%s] Generating %s segments × %s frames at %.2f fps (effective %.2fs)",
@@ -102,17 +113,19 @@ def run_pipeline(
     for i in range(n_segments):
         logger.info(f"[{job_id}] Segment {i+1}/{n_segments} — start_image: {start_img}")
         jobs[job_id]["progress"] = i
+        append_job_log(job_id, f"Segment {i + 1}/{n_segments}: uploading start image")
 
         # ── Upload start image ──────────────────────────────────────────────
         logger.info("[%s] Uploading start image", job_id)
         comfy_filename = upload_image(start_img, filename=f"start_{job_id}_{i}.jpg")
         if not comfy_filename:
-            jobs[job_id]["status"] = "error"
-            jobs[job_id]["error"] = f"Image upload failed at segment {i}"
+            _fail_job(job_id, f"Image upload failed at segment {i + 1}")
             return
+        append_job_log(job_id, f"Segment {i + 1}: image uploaded")
 
         # ── Patch workflow ──────────────────────────────────────────────────
         logger.info("[%s] Patching workflow", job_id)
+        append_job_log(job_id, f"Segment {i + 1}: patching workflow")
         workflow = patch_workflow(
             base_workflow=base_workflow,
             start_image_filename=comfy_filename,
@@ -130,32 +143,33 @@ def run_pipeline(
         logger.info("[%s] Submitting workflow", job_id)
         prompt_id = submit_workflow(workflow)
         if not prompt_id:
-            jobs[job_id]["status"] = "error"
-            jobs[job_id]["error"] = f"Workflow submit failed at segment {i}"
+            _fail_job(job_id, f"Workflow submit failed at segment {i + 1}")
             return
 
         logger.info("[%s] Polling ComfyUI for prompt_id=%s", job_id, prompt_id)
+        append_job_log(job_id, f"Segment {i + 1}: polling ComfyUI")
         success = poll_until_done(prompt_id)
         if not success:
-            jobs[job_id]["status"] = "error"
-            jobs[job_id]["error"] = f"Segment {i} timed out or failed"
+            _fail_job(job_id, f"Segment {i + 1} timed out or failed")
             return
 
         # ── Retrieve output video ───────────────────────────────────────────
         logger.info("[%s] Downloading output video", job_id)
+        append_job_log(job_id, f"Segment {i + 1}: downloading output video")
         raw_path = get_output_video_path(prompt_id, work_dir, segment_index=i)
         if not raw_path:
-            jobs[job_id]["status"] = "error"
-            jobs[job_id]["error"] = f"Could not locate output video for segment {i}"
+            _fail_job(job_id, f"Could not locate output video for segment {i + 1}")
             return
 
         raw_segment_paths.append(raw_path)
         jobs[job_id]["segments"].append(raw_path)
+        append_job_log(job_id, f"Segment {i + 1}: saved video artifact")
 
         # ── Trim segment start (skip for first segment) ─────────────────────
         if i > 0 and TRIM_FRAMES > 0:
             trimmed = work_dir / f"segment_trimmed_{i:03d}.mp4"
             logger.info("[%s] Trimming %s frames -> %s", job_id, TRIM_FRAMES, trimmed)
+            append_job_log(job_id, f"Segment {i + 1}: trimming first {TRIM_FRAMES} frames")
             trim_segment_start(raw_path, str(trimmed), trim_frames=TRIM_FRAMES, fps=output_fps)
             trimmed_segment_paths.append(str(trimmed))
         else:
@@ -164,12 +178,14 @@ def run_pipeline(
         # ── Extract last frame → next start image ──────────────────────────
         next_frame = work_dir / f"frame_{i+1:03d}.jpg"
         logger.info("[%s] Extracting last frame -> %s", job_id, next_frame)
+        append_job_log(job_id, f"Segment {i + 1}: extracting last frame for chaining")
         extract_last_frame(raw_path, str(next_frame))
         start_img = next_frame
 
     # ── Stitch all segments ─────────────────────────────────────────────────
     final_output = str(work_dir / "final.mp4")
     logger.info("[%s] Stitching %s segments -> %s", job_id, len(trimmed_segment_paths), final_output)
+    append_job_log(job_id, "Stitching all segments into final video")
     stitch_segments(
         segment_paths=trimmed_segment_paths,
         output_path=final_output,
@@ -180,6 +196,7 @@ def run_pipeline(
     jobs[job_id]["output"] = final_output
     jobs[job_id]["progress"] = n_segments
     jobs[job_id]["status"] = "done"
+    append_job_log(job_id, f"Generation complete: {final_output}")
     logger.info(f"[{job_id}] Pipeline complete → {final_output}")
 
 

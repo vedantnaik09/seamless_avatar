@@ -1,18 +1,26 @@
 """
 Avatar Video Pipeline — FastAPI entry point
-POST /generate  → kicks off background generation job
-GET  /status/{job_id}   → poll job progress
-GET  /download/{job_id} → download final mp4
+POST   /generate               → kicks off background generation job
+GET    /status/{job_id}        → poll job progress
+GET    /download/{job_id}      → download final mp4
+GET    /jobs/{job_id}/segments → download intermediate segment videos
+GET    /config                 → inspect current ComfyUI URL
+PATCH  /config                 → update current ComfyUI URL
 """
 
-from fastapi import FastAPI, BackgroundTasks, UploadFile, Form, HTTPException
-from fastapi.responses import FileResponse, JSONResponse
+from pathlib import Path
+
+from fastapi import FastAPI, BackgroundTasks, UploadFile, Form, HTTPException, File
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 import logging
 import uuid
+from pydantic import BaseModel
 
 from orchestrator import run_pipeline
-from models import jobs
+from comfy_client import check_connection
+from config import cfg
+from models import jobs, create_job_record
 
 app = FastAPI(title="Avatar Video Pipeline", version="1.0.0")
 
@@ -30,9 +38,46 @@ app.add_middleware(
 )
 
 
+class ConfigPayload(BaseModel):
+    comfy_url: str
+
+
+def _job_payload(job_id: str, job: dict) -> dict:
+    segment_urls = [f"/jobs/{job_id}/segments/{index}" for index in range(len(job.get("segments", [])))]
+    payload = {
+        "job_id": job_id,
+        **job,
+        "segment_urls": segment_urls,
+        "download_url": f"/download/{job_id}" if job.get("status") == "done" else None,
+    }
+    return payload
+
+
+def _get_job_or_404(job_id: str) -> dict:
+    job = jobs.get(job_id)
+    if not job:
+        raise HTTPException(404, "Job not found")
+    return job
+
+
+@app.get("/config")
+def get_config():
+    return {"comfy_url": cfg.comfy_url, "connection": check_connection()}
+
+
+@app.patch("/config")
+def update_config(payload: ConfigPayload):
+    comfy_url = payload.comfy_url.strip()
+    if not comfy_url:
+        raise HTTPException(400, "comfy_url is required")
+
+    cfg.comfy_url = comfy_url
+    return {"comfy_url": cfg.comfy_url, "connection": check_connection()}
+
+
 @app.post("/generate")
 async def generate(
-    image: UploadFile,
+    image: UploadFile = File(...),
     prompt: str = Form(...),
     negative_prompt: str = Form(
         default=(
@@ -65,14 +110,7 @@ async def generate(
     job_id = str(uuid.uuid4())
     img_bytes = await image.read()
 
-    jobs[job_id] = {
-        "status": "queued",
-        "progress": 0,
-        "total_segments": 0,
-        "segments": [],
-        "output": None,
-        "error": None,
-    }
+    jobs[job_id] = create_job_record()
 
     background_tasks.add_task(
         run_pipeline,
@@ -93,18 +131,53 @@ async def generate(
 @app.get("/status/{job_id}")
 def status(job_id: str):
     """Poll job status and progress."""
-    job = jobs.get(job_id)
-    if not job:
-        raise HTTPException(404, "Job not found")
-    return job
+    job = _get_job_or_404(job_id)
+    return _job_payload(job_id, job)
+
+
+@app.get("/jobs/{job_id}/segments/{segment_index}")
+def download_segment(job_id: str, segment_index: int):
+    """Download a generated intermediate segment video."""
+    job = _get_job_or_404(job_id)
+    segments = job.get("segments", [])
+    if segment_index < 0 or segment_index >= len(segments):
+        raise HTTPException(404, "Segment not found")
+
+    segment_path = Path(segments[segment_index])
+    if not segment_path.exists():
+        raise HTTPException(404, "Segment file not found")
+
+    return FileResponse(
+        segment_path,
+        media_type="video/mp4",
+        filename=f"avatar_{job_id[:8]}_segment_{segment_index + 1}.mp4",
+    )
+
+
+@app.get("/jobs/{job_id}/artifacts")
+def job_artifacts(job_id: str):
+    job = _get_job_or_404(job_id)
+    segment_urls = [
+        {
+            "index": index,
+            "available": True,
+            "url": f"/jobs/{job_id}/segments/{index}",
+        }
+        for index in range(len(job.get("segments", [])))
+    ]
+
+    return {
+        "job_id": job_id,
+        "segment_urls": segment_urls,
+        "download_url": f"/download/{job_id}" if job.get("status") == "done" else None,
+        "output_available": bool(job.get("output")),
+    }
 
 
 @app.get("/download/{job_id}")
 def download(job_id: str):
     """Download the final stitched video once status == 'done'."""
-    job = jobs.get(job_id)
-    if not job:
-        raise HTTPException(404, "Job not found")
+    job = _get_job_or_404(job_id)
     if job["status"] != "done":
         raise HTTPException(425, f"Not ready — current status: {job['status']}")
     return FileResponse(
@@ -124,7 +197,6 @@ def list_jobs():
 def delete_job(job_id: str):
     """Remove a job and its working files."""
     import shutil
-    from pathlib import Path
 
     job = jobs.pop(job_id, None)
     if not job:

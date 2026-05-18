@@ -1,10 +1,16 @@
-import React from 'react'
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import Generator from './pages/Generator'
+import Landing from './pages/Landing.tsx'
 
 const App = () => {
   return (
-    <div>
-      
-    </div>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Landing />} />
+        <Route path="/generator" element={<Generator />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
   )
 }
 
