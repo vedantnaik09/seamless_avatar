@@ -240,7 +240,7 @@ const Landing = () => {
                       </div>
                       <button
                         onClick={handleUpload}
-                        className="inline-flex items-center justify-center rounded-full bg-[#f1efe9] px-5 py-2.5 text-sm font-semibold text-[#161616] shadow-md transition-all hover:bg-white active:scale-95"
+                        className="upload-glow inline-flex items-center justify-center rounded-full bg-[#f1efe9] px-5 py-2.5 text-sm font-semibold text-[#161616] transition-all hover:bg-white active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f1efe9]/30 focus-visible:ring-offset-2 focus-visible:ring-offset-[#111111]"
                       >
                         Upload image
                       </button>
