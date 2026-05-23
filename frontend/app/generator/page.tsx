@@ -1,7 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+"use client"
 
-type JobStatus = 'queued' | 'running' | 'done' | 'error' | string
+import { useEffect, useMemo, useRef, useState } from "react"
+import type React from "react"
+import Link from "next/link"
+
+type JobStatus = "queued" | "running" | "done" | "error" | string
 
 type JobLog = {
   ts: string
@@ -39,12 +42,12 @@ type GenerateResponse = {
 }
 
 const DEFAULT_NEGATIVE_PROMPT =
-  'low quality, worst quality, blurry, out of focus, overexposed, underexposed, low contrast, noisy, distorted face, deformed eyes, bad anatomy, extra fingers, missing fingers, fused fingers, poorly drawn hands, poorly drawn face, duplicate person, multiple people, crowded background, messy background, background movement, subtitles, watermark, text, logo, artifacts, jpeg artifacts, cartoon, painting, anime, unrealistic skin, unnatural lip sync, frozen frame, static pose, weird mouth movement, asymmetrical face, flickering, shaky camera, mutated limbs, extra limbs, bad proportions, tilted face, motion blur, dark lighting, harsh shadows, grainy video, warped body, inconsistent frames, background characters, walking backwards, camera jitter'
+  "low quality, worst quality, blurry, out of focus, overexposed, underexposed, low contrast, noisy, distorted face, deformed eyes, bad anatomy, extra fingers, missing fingers, fused fingers, poorly drawn hands, poorly drawn face, duplicate person, multiple people, crowded background, messy background, background movement, subtitles, watermark, text, logo, artifacts, jpeg artifacts, cartoon, painting, anime, unrealistic skin, unnatural lip sync, frozen frame, static pose, weird mouth movement, asymmetrical face, flickering, shaky camera, mutated limbs, extra limbs, bad proportions, tilted face, motion blur, dark lighting, harsh shadows, grainy video, warped body, inconsistent frames, background characters, walking backwards, camera jitter"
 
 const DEFAULT_PROMPT =
-  'A well-lit professional man stands centered against a clean modern background, speaking directly to the camera with natural facial expressions and subtle hand gestures. He wears a smart casual shirt and maintains steady eye contact while talking confidently. The background is softly blurred and uncluttered, with bright neutral lighting and minimal distractions. Smooth cinematic camera framing, realistic skin tones, natural lip sync, high detail, clear focus, studio-quality appearance, calm atmosphere.'
+  "A well-lit professional man stands centered against a clean modern background, speaking directly to the camera with natural facial expressions and subtle hand gestures. He wears a smart casual shirt and maintains steady eye contact while talking confidently. The background is softly blurred and uncluttered, with bright neutral lighting and minimal distractions. Smooth cinematic camera framing, realistic skin tones, natural lip sync, high detail, clear focus, studio-quality appearance, calm atmosphere."
 
-const DEFAULT_API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+const DEFAULT_API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000"
 const CLIP_FRAMES = 61
 const TRIM_FRAMES = 2
 const OUTPUT_FPS = 16
@@ -54,27 +57,27 @@ type NumericFieldValue = string
 
 function joinUrl(baseUrl: string, path?: string | null) {
   if (!path) {
-    return ''
+    return ""
   }
 
   if (/^https?:\/\//i.test(path)) {
     return path
   }
 
-  return `${baseUrl.replace(/\/$/, '')}${path.startsWith('/') ? path : `/${path}`}`
+  return `${baseUrl.replace(/\/$/, "")}${path.startsWith("/") ? path : `/${path}`}`
 }
 
 function formatStatus(status: JobStatus) {
-  if (status === 'queued') return 'Queued'
-  if (status === 'running') return 'Running'
-  if (status === 'done') return 'Complete'
-  if (status === 'error') return 'Failed'
+  if (status === "queued") return "Queued"
+  if (status === "running") return "Running"
+  if (status === "done") return "Complete"
+  if (status === "error") return "Failed"
   return status
 }
 
 function formatTime(value: string) {
   try {
-    return new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+    return new Date(value).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })
   } catch {
     return value
   }
@@ -112,42 +115,31 @@ async function readResponseError(response: Response) {
   }
 }
 
-const App = () => {
+export default function GeneratorPage() {
   const apiBase = DEFAULT_API_BASE
-  const [comfyUrl, setComfyUrl] = useState('')
+  const [comfyUrl, setComfyUrl] = useState("")
   const [prompt, setPrompt] = useState(DEFAULT_PROMPT)
   const [negativePrompt, setNegativePrompt] = useState(DEFAULT_NEGATIVE_PROMPT)
-  const [durationSeconds, setDurationSeconds] = useState<NumericFieldValue>('10')
-  const [width, setWidth] = useState<NumericFieldValue>('640')
-  const [height, setHeight] = useState<NumericFieldValue>('480')
-  const [cfgScale, setCfgScale] = useState<NumericFieldValue>('5')
-  const [steps, setSteps] = useState<NumericFieldValue>('20')
+  const [durationSeconds, setDurationSeconds] = useState<NumericFieldValue>("10")
+  const [width, setWidth] = useState<NumericFieldValue>("640")
+  const [height, setHeight] = useState<NumericFieldValue>("480")
+  const [cfgScale, setCfgScale] = useState<NumericFieldValue>("5")
+  const [steps, setSteps] = useState<NumericFieldValue>("20")
   const [imageFile, setImageFile] = useState<File | null>(null)
-  const [imagePreview, setImagePreview] = useState('')
+  const [imagePreview, setImagePreview] = useState("")
   const [jobs, setJobs] = useState<JobRecord[]>([])
-  const [selectedJobId, setSelectedJobId] = useState<string>('')
+  const [selectedJobId, setSelectedJobId] = useState<string>("")
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [statusMessage, setStatusMessage] = useState('')
-  const [errorMessage, setErrorMessage] = useState('')
-
-  useEffect(() => {
-    if (!imageFile) {
-      setImagePreview('')
-      return
-    }
-
-    const previewUrl = URL.createObjectURL(imageFile)
-    setImagePreview(previewUrl)
-
-    return () => URL.revokeObjectURL(previewUrl)
-  }, [imageFile])
+  const [statusMessage, setStatusMessage] = useState("")
+  const [errorMessage, setErrorMessage] = useState("")
+  const imagePreviewUrlRef = useRef<string>("")
 
   useEffect(() => {
     let cancelled = false
 
     const loadConfig = async () => {
       try {
-        const response = await fetch(joinUrl(apiBase, '/config'))
+        const response = await fetch(joinUrl(apiBase, "/config"))
         if (!response.ok) {
           throw new Error(await readResponseError(response))
         }
@@ -158,7 +150,7 @@ const App = () => {
         setComfyUrl(data.comfy_url)
       } catch (error) {
         if (!cancelled) {
-          setErrorMessage(error instanceof Error ? error.message : 'Unable to load backend config')
+          setErrorMessage(error instanceof Error ? error.message : "Unable to load backend config")
         }
       }
     }
@@ -191,17 +183,17 @@ const App = () => {
         if (cancelled) return
 
         setJobs((currentJobs) => [data, ...currentJobs.filter((job) => job.job_id !== data.job_id)])
-        setErrorMessage('')
+        setErrorMessage("")
 
-        if (data.status === 'done' || data.status === 'error') {
-          setStatusMessage(data.status === 'done' ? 'Video ready for download.' : 'Generation failed.')
+        if (data.status === "done" || data.status === "error") {
+          setStatusMessage(data.status === "done" ? "Video ready for download." : "Generation failed.")
           return
         }
 
         timer = window.setTimeout(pollJob, 2400)
       } catch (error) {
         if (!cancelled) {
-          setErrorMessage(error instanceof Error ? error.message : 'Unable to refresh job status')
+          setErrorMessage(error instanceof Error ? error.message : "Unable to refresh job status")
           timer = window.setTimeout(pollJob, 3000)
         }
       }
@@ -219,32 +211,32 @@ const App = () => {
 
   const submitJob = async () => {
     if (!imageFile) {
-      throw new Error('Choose an image first.')
+      throw new Error("Choose an image first.")
     }
 
     if (!prompt.trim()) {
-      throw new Error('Prompt is required.')
+      throw new Error("Prompt is required.")
     }
 
-    const parsedDurationSeconds = parseNumericField(durationSeconds, 'Duration')
-    const parsedWidth = parseNumericField(width, 'Width')
-    const parsedHeight = parseNumericField(height, 'Height')
-    const parsedCfgScale = parseNumericField(cfgScale, 'CFG scale')
-    const parsedSteps = parseNumericField(steps, 'Steps')
+    const parsedDurationSeconds = parseNumericField(durationSeconds, "Duration")
+    const parsedWidth = parseNumericField(width, "Width")
+    const parsedHeight = parseNumericField(height, "Height")
+    const parsedCfgScale = parseNumericField(cfgScale, "CFG scale")
+    const parsedSteps = parseNumericField(steps, "Steps")
 
     const formData = new FormData()
-    formData.append('image', imageFile)
-    formData.append('comfy_url', comfyUrl.trim())
-    formData.append('prompt', prompt.trim())
-    formData.append('negative_prompt', negativePrompt.trim())
-    formData.append('duration_seconds', String(parsedDurationSeconds))
-    formData.append('width', String(parsedWidth))
-    formData.append('height', String(parsedHeight))
-    formData.append('cfg_scale', String(parsedCfgScale))
-    formData.append('steps', String(parsedSteps))
+    formData.append("image", imageFile)
+    formData.append("comfy_url", comfyUrl.trim())
+    formData.append("prompt", prompt.trim())
+    formData.append("negative_prompt", negativePrompt.trim())
+    formData.append("duration_seconds", String(parsedDurationSeconds))
+    formData.append("width", String(parsedWidth))
+    formData.append("height", String(parsedHeight))
+    formData.append("cfg_scale", String(parsedCfgScale))
+    formData.append("steps", String(parsedSteps))
 
-    const response = await fetch(joinUrl(apiBase, '/generate'), {
-      method: 'POST',
+    const response = await fetch(joinUrl(apiBase, "/generate"), {
+      method: "POST",
       body: formData,
     })
 
@@ -268,25 +260,25 @@ const App = () => {
 
     setJobs((currentJobs) => [optimisticJob, ...currentJobs.filter((job) => job.job_id !== data.job_id)])
     setSelectedJobId(data.job_id)
-    setStatusMessage('Job submitted. Polling progress now.')
+    setStatusMessage("Job submitted. Polling progress now.")
   }
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setIsSubmitting(true)
-    setErrorMessage('')
+    setErrorMessage("")
 
     try {
       await submitJob()
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Unable to submit job')
+      setErrorMessage(error instanceof Error ? error.message : "Unable to submit job")
     } finally {
       setIsSubmitting(false)
     }
   }
 
   const progressPercent = activeJob && activeJob.total_segments > 0 ? Math.min(100, Math.round((activeJob.progress / activeJob.total_segments) * 100)) : 0
-  const currentSegment = activeJob ? Math.min(activeJob.progress + (activeJob.status === 'done' ? 0 : 1), Math.max(1, activeJob.total_segments || 1)) : 0
+  const currentSegment = activeJob ? Math.min(activeJob.progress + (activeJob.status === "done" ? 0 : 1), Math.max(1, activeJob.total_segments || 1)) : 0
   const estimatedSegments = estimateSegments(Number(durationSeconds) || 1)
 
   return (
@@ -310,13 +302,10 @@ const App = () => {
           </div>
 
           <div className="flex flex-wrap items-center gap-3 text-sm">
-            <Link
-              to="/"
-              className="rounded-full border border-slate-200 bg-white px-3 py-1.5 font-medium text-slate-700 transition hover:bg-slate-50"
-            >
+            <Link href="/" className="rounded-full border border-slate-200 bg-white px-3 py-1.5 font-medium text-slate-700 transition hover:bg-slate-50">
               Back home
             </Link>
-            <span className="rounded-full bg-slate-900 px-3 py-1.5 font-medium text-white">API {apiBase.replace(/^https?:\/\//, '')}</span>
+            <span className="rounded-full bg-slate-900 px-3 py-1.5 font-medium text-white">API {apiBase.replace(/^https?:\/\//, "")}</span>
           </div>
         </header>
 
@@ -324,13 +313,12 @@ const App = () => {
           <section className="rounded-4xl border border-white/70 bg-white/75 p-5 shadow-[0_20px_80px_rgba(15,23,42,0.08)] backdrop-blur-xl sm:p-6">
             <form className="space-y-6" onSubmit={handleSubmit}>
               <div className="space-y-3">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Connection</p>
-                    <h2 className="mt-1 text-lg font-semibold text-slate-950">ComfyUI tunnel</h2>
-                  </div>
-                  <p className="text-xs leading-5 text-green-900">
-                  Need your own ComfyUI host? Use this Colab setup and get a free link:
-                  {' '}
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Connection</p>
+                  <h2 className="mt-1 text-lg font-semibold text-slate-950">ComfyUI tunnel</h2>
+                </div>
+                <p className="text-xs leading-5 text-green-900">
+                  Need your own ComfyUI host? Use this Colab setup and get a free link:{" "}
                   <a
                     href="https://colab.research.google.com/drive/1dH04ch7W8A6WMs-FMQeYAPgo3AYxw_it?usp=sharing"
                     target="_blank"
@@ -357,7 +345,23 @@ const App = () => {
                   <input
                     type="file"
                     accept="image/jpeg,image/png,image/webp"
-                    onChange={(event) => setImageFile(event.target.files?.[0] ?? null)}
+                    onChange={(event) => {
+                      const nextFile = event.target.files?.[0] ?? null
+                      setImageFile(nextFile)
+
+                      if (imagePreviewUrlRef.current) {
+                        URL.revokeObjectURL(imagePreviewUrlRef.current)
+                        imagePreviewUrlRef.current = ""
+                      }
+
+                      if (nextFile) {
+                        const previewUrl = URL.createObjectURL(nextFile)
+                        imagePreviewUrlRef.current = previewUrl
+                        setImagePreview(previewUrl)
+                      } else {
+                        setImagePreview("")
+                      }
+                    }}
                     className="text-sm text-slate-700 file:mr-4 file:rounded-full file:border-0 file:bg-slate-900 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-slate-800"
                   />
                   {imagePreview ? (
@@ -375,7 +379,7 @@ const App = () => {
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Target pacing</span>
                     <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
-                      About {estimatedSegments} segment{estimatedSegments === 1 ? '' : 's'}
+                      About {estimatedSegments} segment{estimatedSegments === 1 ? "" : "s"}
                     </span>
                   </div>
 
@@ -464,9 +468,7 @@ const App = () => {
               <div className="flex flex-col gap-3 border-t border-slate-200 pt-5 sm:flex-row sm:items-center sm:justify-between">
                 <div className="space-y-1 text-sm text-slate-600">
                   <p className="font-medium text-slate-900">Ready to generate.</p>
-                  <p>
-                    The request will save the ComfyUI URL, submit the image, and start polling the backend immediately.
-                  </p>
+                  <p>The request will save the ComfyUI URL, submit the image, and start polling the backend immediately.</p>
                 </div>
 
                 <button
@@ -474,7 +476,7 @@ const App = () => {
                   disabled={isSubmitting}
                   className="inline-flex items-center justify-center rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {isSubmitting ? 'Submitting...' : 'Generate video'}
+                  {isSubmitting ? "Submitting..." : "Generate video"}
                 </button>
               </div>
             </form>
@@ -498,9 +500,7 @@ const App = () => {
                     <div>
                       <p className="text-sm font-medium text-slate-900">Job {activeJob.job_id.slice(0, 8)}</p>
                       <p className="text-xs text-slate-500">
-                        {activeJob.total_segments > 0
-                          ? `Segment ${currentSegment} of ${activeJob.total_segments}`
-                          : 'Waiting for backend progress'}
+                        {activeJob.total_segments > 0 ? `Segment ${currentSegment} of ${activeJob.total_segments}` : "Waiting for backend progress"}
                       </p>
                     </div>
                     <p className="text-sm font-semibold text-slate-900">{progressPercent}%</p>
@@ -526,9 +526,7 @@ const App = () => {
                   </div>
 
                   {activeJob.error ? (
-                    <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
-                      {activeJob.error}
-                    </div>
+                    <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">{activeJob.error}</div>
                   ) : null}
                 </div>
               ) : (
@@ -553,7 +551,7 @@ const App = () => {
                     <div key={`${log.ts}-${log.message}`} className="mb-1 flex gap-3 last:mb-0">
                       <span className="shrink-0 text-slate-400">{formatTime(log.ts)}</span>
                       <span className="shrink-0 uppercase tracking-[0.18em] text-slate-500">{log.level}</span>
-                      <span className="min-w-0 flex-1 wrap-break-word text-slate-800">{log.message}</span>
+                      <span className="min-w-0 flex-1 break-words text-slate-800">{log.message}</span>
                     </div>
                   ))
                 ) : (
@@ -569,10 +567,7 @@ const App = () => {
                   <h3 className="mt-1 text-base font-semibold text-slate-950">Segments and final output</h3>
                 </div>
                 {activeJob?.download_url ? (
-                  <a
-                    href={joinUrl(apiBase, activeJob.download_url)}
-                    className="rounded-full bg-slate-950 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-slate-800"
-                  >
+                  <a href={joinUrl(apiBase, activeJob.download_url)} className="rounded-full bg-slate-950 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-slate-800">
                     Download MP4
                   </a>
                 ) : null}
@@ -581,9 +576,7 @@ const App = () => {
               {activeJob?.download_url ? (
                 <div className="overflow-hidden rounded-3xl border border-slate-200 bg-slate-950">
                   <video key={activeJob.download_url} controls className="aspect-video w-full bg-black" src={joinUrl(apiBase, activeJob.download_url)} />
-                  <div className="border-t border-white/10 p-4 text-sm text-slate-300">
-                    Final stitched video is ready.
-                  </div>
+                  <div className="border-t border-white/10 p-4 text-sm text-slate-300">Final stitched video is ready.</div>
                 </div>
               ) : (
                 <div className="rounded-[1.25rem] border border-dashed border-slate-300 bg-slate-50 p-5 text-sm text-slate-500">
@@ -605,13 +598,7 @@ const App = () => {
                           <span className="text-xs text-slate-500">preview</span>
                         </div>
                       </div>
-                      <video
-                        controls
-                        muted
-                        playsInline
-                        className="aspect-video w-full bg-black"
-                        src={joinUrl(apiBase, segmentUrl)}
-                      />
+                      <video controls muted playsInline className="aspect-video w-full bg-black" src={joinUrl(apiBase, segmentUrl)} />
                     </a>
                   ))}
                 </div>
@@ -634,15 +621,15 @@ const App = () => {
                       key={job.job_id}
                       type="button"
                       onClick={() => setSelectedJobId(job.job_id)}
-                      className={`flex w-full items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left transition ${selectedJobId === job.job_id ? 'border-slate-950 bg-slate-950 text-white' : 'border-slate-200 bg-slate-50 text-slate-900 hover:bg-white'}`}
+                      className={`flex w-full items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left transition ${selectedJobId === job.job_id ? "border-slate-950 bg-slate-950 text-white" : "border-slate-200 bg-slate-50 text-slate-900 hover:bg-white"}`}
                     >
                       <div>
                         <p className="text-sm font-semibold">{job.job_id.slice(0, 8)}</p>
-                        <p className={`text-xs ${selectedJobId === job.job_id ? 'text-slate-300' : 'text-slate-500'}`}>
-                          {formatStatus(job.status)} · {job.total_segments || 0} segment{job.total_segments === 1 ? '' : 's'}
+                        <p className={`text-xs ${selectedJobId === job.job_id ? "text-slate-300" : "text-slate-500"}`}>
+                          {formatStatus(job.status)} · {job.total_segments || 0} segment{job.total_segments === 1 ? "" : "s"}
                         </p>
                       </div>
-                      <span className={`rounded-full px-3 py-1 text-xs font-medium ${selectedJobId === job.job_id ? 'bg-white/10 text-white' : 'bg-white text-slate-600'}`}>
+                      <span className={`rounded-full px-3 py-1 text-xs font-medium ${selectedJobId === job.job_id ? "bg-white/10 text-white" : "bg-white text-slate-600"}`}>
                         {job.progress}/{job.total_segments || 0}
                       </span>
                     </button>
@@ -659,7 +646,7 @@ const App = () => {
 
         {statusMessage || errorMessage ? (
           <div className="fixed bottom-5 left-1/2 z-20 w-[calc(100%-1.5rem)] max-w-2xl -translate-x-1/2 px-4 sm:w-auto">
-            <div className={`rounded-full border px-4 py-3 text-sm shadow-lg backdrop-blur-xl ${errorMessage ? 'border-rose-200 bg-rose-50 text-rose-800' : 'border-slate-200 bg-white/90 text-slate-700'}`}>
+            <div className={`rounded-full border px-4 py-3 text-sm shadow-lg backdrop-blur-xl ${errorMessage ? "border-rose-200 bg-rose-50 text-rose-800" : "border-slate-200 bg-white/90 text-slate-700"}`}>
               {errorMessage || statusMessage}
             </div>
           </div>
@@ -668,5 +655,3 @@ const App = () => {
     </main>
   )
 }
-
-export default App
