@@ -219,7 +219,7 @@ export function proxy(request: NextRequest, event: NextFetchEvent) {
   const payload = buildVisitorDetails({
     visitorId,
     method: request.method,
-    path: requestUrl.pathname,
+    path: `${requestUrl.origin}${requestUrl.pathname}`,
     queryString: requestUrl.search || null,
     referrer: request.headers.get("referer"),
     userAgent: request.headers.get("user-agent"),
@@ -239,7 +239,7 @@ export function proxy(request: NextRequest, event: NextFetchEvent) {
   if (isDebugEnabled()) {
     console.error("[visit-tracking] proxy hit", {
       method: request.method,
-      path: requestUrl.pathname,
+      path: `${requestUrl.origin}${requestUrl.pathname}`,
       payload,
       visitorId,
       visitUrl: visitUrl.toString(),
